@@ -1,0 +1,291 @@
+---
+title: "PEC1_Análisis multifactorial"
+author: "Amelia Martínez Sequera"
+date: "17/4/2020"
+output: html_document
+---
+
+
+## Ejercicio 1.1
+
+Media  para cada gen y varianza para cada grupo. t para todos los genes. Gráfico qq. Gráfico densidad error estándard.
+
+```{r}
+library(corpcor)
+head(p53DataSet)
+
+p53DataSet_wt<- p53DataSet[,1:17]
+head(mediawt<- rowMeans(p53DataSet_wt))
+
+p53DataSet_mut<- p53DataSet[,18:50]
+head(mediamut<- rowMeans(p53DataSet_mut))
+
+s2<- sd(p53DataSet_mut)^2
+s1<- sd(p53DataSet_wt)^2
+s2
+p53medias<- matrix(c(mediawt, mediamut), byrow = F, ncol=2)
+colnames(p53medias)<- c("WT","MUT")
+rownames(p53medias)<- rownames(p53DataSet)
+
+ttest<- (mediawt-mediamut)/sqrt(s1/17 + s2/33)
+ttest 
+
+head(apply(p53medias,1,t.test))
+
+qqnorm(ttest);qqline(ttest)
+
+```
+```{r}
+model<- lm(mediamut~mediawt)
+summary(model)
+residuos<- rstandard(model)
+plot(fitted.values(model), rstandard(model), xlab="valores ajustados", ylab = "residuos estandarizados")
+```
+
+Volcano plot
+```{r}
+library(genefilter)
+data<- rowttests(p53medias)
+S<- sd(p53medias)
+str(p53medias)
+filter_volcano(mediawt,data$p.value, S_cutoff=3.5, S= S , alpha = 0.05,main="WT")
+filter_volcano(mediamut, data$p.value,S_cutoff=3, S=S, alpha=0.05, main="MUT")
+```
+## Ejercicio 1.2
+
+Test de permutaciones
+
+```{r}
+sdg<- apply(p53DataSet,1,sd)
+So<- median(sdg)
+So
+
+```
+
+## Ejercicio 1.3
+
+```{r}
+library(heplots)
+tmut<- t(p53DataSet_mut)
+twt <- t(p53DataSet_wt)
+S2<- cov.shrink(tmut)
+S1<- cov.shrink(twt)
+S<- (16*S1+32*S2)/48
+dim(S)
+invS<- chol2inv(S)
+
+x1<- as.vector(mediawt)
+x2<- as.vector(mediamut)
+x<- x1-x2
+D2<- t(x)%*%invS%*%(x)
+
+T2<-D2%*%(17*33/50)
+T2
+
+```
+## Ejercicio 1.4
+
+Test de permutaciones
+```{r}
+set.seed(2020)
+obsdif<- mean(mediawt)-mean(mediamut)
+N <- 10
+avgdiff <- replicate(1000, {
+  all <- sample(c(mediawt,mediamut))
+  newwt <- all[1:N]
+  newmut <- all[(N+1):(2*N)]
+  return(mean(newwt) - mean(newmut))
+})
+hist(avgdiff)
+abline(v=obsdif, col="red")
+
+```
+
+## Ejercicio 2
+
+```{r}
+"druguse.cor" <- 
+matrix(c(1., 0.44700000000000001, 0.42199999999999999, 0.435, 0.114, 0.20300000000000001, 0.090999999999999998, 
+	0.082000000000000003, 0.51300000000000001, 0.30399999999999999, 0.245, 0.10100000000000001, 0.245, 
+	0.44700000000000001, 1., 0.61899999999999999, 0.60399999999999998, 0.068000000000000005, 
+	0.14599999999999999, 0.10299999999999999, 0.063, 0.44500000000000001, 0.318, 0.20300000000000001, 
+	0.087999999999999995, 0.19900000000000001, 0.42199999999999999, 0.61899999999999999, 1., 
+	0.58299999999999996, 0.052999999999999999, 0.13900000000000001, 0.11, 0.066000000000000003, 
+	0.36499999999999999, 0.23999999999999999, 0.183, 0.073999999999999996, 0.184, 0.435, 0.60399999999999998,
+	0.58299999999999996, 1., 0.115, 0.25800000000000001, 0.122, 0.097000000000000003, 0.48199999999999998,
+	0.36799999999999999, 0.255, 0.13900000000000001, 0.29299999999999998, 0.114, 0.068000000000000005, 
+	0.052999999999999999, 0.115, 1., 0.34899999999999998, 0.20899999999999999, 0.32100000000000001, 0.186,
+	0.30299999999999999, 0.27200000000000002, 0.27900000000000003, 0.27800000000000002, 0.20300000000000001,
+	0.14599999999999999, 0.13900000000000001, 0.25800000000000001, 0.34899999999999998, 1., 0.221, 
+	0.35499999999999998, 0.315, 0.377, 0.32300000000000001, 0.36699999999999999, 0.54500000000000004, 
+	0.090999999999999998, 0.10299999999999999, 0.11, 0.122, 0.20899999999999999, 0.221, 1., 0.20100000000000001,
+	0.14999999999999999, 0.16300000000000001, 0.31, 0.23200000000000001, 0.23200000000000001, 
+	0.082000000000000003, 0.063, 0.066000000000000003, 0.097000000000000003, 0.32100000000000001, 
+	0.35499999999999998, 0.20100000000000001, 1., 0.154, 0.219, 0.28799999999999998, 0.32000000000000001, 0.314,
+	0.51300000000000001, 0.44500000000000001, 0.36499999999999999, 0.48199999999999998, 0.186, 0.315, 
+	0.14999999999999999, 0.154, 1., 0.53400000000000003, 0.30099999999999999, 0.20399999999999999, 
+	0.39400000000000002, 0.30399999999999999, 0.318, 0.23999999999999999, 0.36799999999999999, 
+	0.30299999999999999, 0.377, 0.16300000000000001, 0.219, 0.53400000000000003, 1., 0.30199999999999999, 
+	0.36799999999999999, 0.46700000000000003, 0.245, 0.20300000000000001, 0.183, 0.255, 0.27200000000000002,
+	0.32300000000000001, 0.31, 0.28799999999999998, 0.30099999999999999, 0.30199999999999999, 1., 
+	0.30399999999999999, 0.39200000000000002, 0.10100000000000001, 0.087999999999999995, 0.073999999999999996,
+	0.13900000000000001, 0.27900000000000003, 0.36699999999999999, 0.23200000000000001, 0.32000000000000001,
+	0.20399999999999999, 0.36799999999999999, 0.34000000000000002, 1., 0.51100000000000001, 0.245, 
+	0.19900000000000001, 0.184, 0.29299999999999998, 0.27800000000000002, 0.54500000000000004, 
+	0.23200000000000001, 0.314, 0.39400000000000002, 0.46700000000000003, 0.39200000000000002, 
+	0.51100000000000001, 1.)
+, nrow = 13, ncol = 13
+,  dimnames = list(c("cigarettes", "beer", "wine", "liquor", "cocaine", "tranquillizers", "drug store medication", "heroin", 
+	"marijuana", "hashish", "inhalants", "haluucinogenics", "amphetamine")
+, c("cigarettes", "beer", "wine", "liquor", "cocaine", "tranquillizers", "drug store medication", "heroin", 
+	"marijuana", "hashish", "inhalants", "haluucinogenics", "amphetamine")
+)
+)
+
+isSymmetric(druguse.cor)
+newdrug<-(t(druguse.cor)+druguse.cor)/2
+isSymmetric(newdrug)
+install.packages("corrplot")
+library(corrplot)
+corrplot(newdrug, method= "square",type="lower", diag=F, addCoef.col = "black",number.cex = 0.6)
+```
+```{r}
+install.packages("qgraph")
+library(qgraph)
+qgraph(newdrug, threshold=0.4)
+```
+```{r}
+install.packages("psych")
+library(psych)
+cortest.bartlett(newdrug, n=1634)
+```
+podemos rechazar la hipótesis nula de esfericidad (que la matriz de coeficientes de correlación no es significativamente distinta de la matriz identidad). Además, el resultado se puede considerar fiable, debido a que el tamaño de la muestra es grande. En caso contrario, no existirían correlaciones significativas entre las variables, y el modelo factorial no sería pertinente.
+El estadístico está basado en el valor del determinante de la matriz de coeficientes de correlación: 
+-[n-1-(2k+5)/6]ln|R|
+donde k= número de variables, n=tamaño de la muestra y R= matriz de correlaciones.
+
+```{r}
+KMO(newdrug)
+```
+Como los índices son próximos a 1, el ACP se puede hacer. Como partimos de la matriz de correlaciones, los valores ya estan normalizados.
+
+```{r}
+newdrug_pca<- prcomp(newdrug)
+newdrug
+```
+Cada columna representa un vector con los coeficientes que, combinados con las variables dan lugar a las componentes principales (o factores).
+
+```{r}
+pca_newdrug<- princomp(newdrug)
+pca_newdrug
+pca_newdrug$loadings
+pca_newdrug$scores
+
+```
+
+```{r}
+plot(newdrug_pca, type="l")
+```
+
+nos podríamos quedar con PC1-P6 que explicaría un 85% de la variabilidad, o un 90% si nos quedamos con P1-PC7.
+
+```{r}
+```
+
+
+```{r}
+install.packages("factoextra")
+library(factoextra)
+biplot(newdrug_pca, scale=0.5)
+```
+
+En el gráfico biplot lo que importa son las direcciones. PC1 seria la componente que explicaría más la variable beer (alineada con el 0),y también wine, liquor y cigarrettes, porque tienden más a PC2 (se mueven en el eje horizontal). De la misma manera, para PC2 sería hashis, y luego amphetamine y drugstoremedication. Se obtiene la misma conclusión si observamos los valores absolutos de los coeficientes.
+
+```{r}
+fviz_pca_var(newdrug_pca, col.var="contrib",gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),repel = T)
+```
+Se puede hacer un análisis por separado de la contribución de cada variable:
+
+para el PC1:
+
+```{r}
+fviz_contrib(newdrug_pca, choice="var", axes=1, top=10)
+```
+
+para el PC2
+
+```{r}
+fviz_contrib(newdrug_pca, choice="var", axes=2, top=10)
+```
+Y para PC3:
+
+```{r}
+fviz_contrib(newdrug_pca, choice="var", axes=3, top=10)
+```
+
+Calculamos la diferencia entre las correlaciones observadas y predichas (6 factores):
+
+```{r}
+pred <- newdrug_pca[[6]]$loadings%*%t(newdrug_pca[[6]]$loadings) +
+diag(newdrug_pca[[6]]$uniquenesses)
+round(newdrug-pred, digits=3) 
+```
+
+
+6 factores es una buena elección, pero haremos el cálculo ahora para 3 factores, para comprobar que las disferencias también son bastante pequeñas, con lo cual, también sería una elección acertada.
+
+```{r}
+pred <- newdrug_pca[[3]]$loadings%*%t(newdrug_pca[[3]]$loadings)+
+diag(newdrug_pca[[3]]$uniquenesses)
+round(newdrug-pred, digits=3)
+```
+
+
+## Ejercicio 3
+
+```{r}
+newdrug_ppal<- principal(newdrug,nfactors=6,rotate = "none" )
+newdrug_ppal
+```
+
+
+Las cargas o loadings dan una idea sobre que peso tiene una variable en cada componente,define además la dirección en el espacio sobre el cual la varianza de los datos es mayor.
+
+Las cargas factoriales son las correlaciones entre cada variable y el factor:
+
+```{r}
+newdrug_ppal$values
+```
+
+```{r}
+fa(newdrug, nfactors= 6, rotate ="none" , fm="pa")
+
+```
+
+Grafico barras loadings
+```{r}
+barplot(newdrug_ppal$loadings[,1:3], ylim = c(-4,8),cex.axis = 0.5, ylab = "loadings")
+```
+
+```{r}
+ml<-fa(newdrug, nfactors= 6, rotate ="varimax" , fm="ml")
+barplot(ml$loadings[,1:3], ylab="loadings")
+```
+
+Para facilitar la interpretación del significado de los factores seleccionados, se suele llevar a cabo una rotación de los ejes factoriales. 
+Con la rotacion varimax(rotación ortogonal de los ejes factoriales) se obtiene el mejor resultado, ya que practicamente asimila cada variable con un eje. Este es un estudio comparativo de las marcas, no evaluativo. Pueden ser todas muy buenas o muy malas, pero el estudio determina unicamente las diferencias entre ellas, no el valor; este se aprecia estudiando los valores iniciales.
+
+```{r}
+newdrug_pca <- vector("list",6)
+for(i in 1:6) {newdrug_pca[[i]] <- factanal(covmat=newdrug, factors=i, method="mle")
+} 
+factanal(factors = i, covmat=newdrug, method="mle")
+```
+
+```{r}
+dia_newdrug<- eigen(newdrug)
+dia_newdrug$vectors%*%diag(dia_newdrug$values)%*%solve(dia_newdrug$vectors)
+dia_newdrug
+
+```
+
