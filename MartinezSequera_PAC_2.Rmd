@@ -1,0 +1,246 @@
+---
+title: "1 Metodes numerics aplicats als conceptes basics de l'algebra lineal (continuacio)"
+author: "Amelia Martínez Sequera"
+date: "26/9/2021"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Nota: He vist que que a la PAC1 no vaig copiar bé la matriu L, canviant el 10 per un 0. Per tant, quan faig referència a que els resultats coincideixen amb la pràctica anterior, em refereixo als resultats correctes, no els que jo vaig obtenir.**
+
+Prèviament, haviem calculat la suma deles potències dels valors propis mitjançant el càlcul de la traça de la potència de la matriu L i havíem obtingut els coeficients del polinomi característic. 
+
+```{r, echo=FALSE}
+L<-matrix(c(10, -35, 50, -24, 1, rep(0,4), 1, rep(0,4), 1, 0),
+       byrow = T, ncol=4)
+L
+```
+
+## Alternativa al càlcul dels coeficients del polinomi característic.
+
+Tenint en compte l´expressió del polinomi característic introduïda en la pràctica anterior:
+
+$$P(\Lambda) = \Lambda^{4} + c_{1}\Lambda^{3} + c_{2}\Lambda^{2} + c_{3}\Lambda + c_{4}$$
+
+existeix una variant del mètode de Leverrier, coneguda com el mètode de Leverrier-Faddeev, que també ens permet obtenir els coeficients del polinomi a partir del càlcul de la traça de certes matrius, de la següent manera:
+
+$c_{1} = -Tr(B_{1}), B_{1} = L$
+
+$c_{2} = -1/2 Tr(B_{2}), B_{2} = L(B_{1}+c_{1}I)$
+
+$c_{3} = -1/3 Tr(B_{3}), B_{3} = L(B_{2}+c_{2}I)$
+
+$c_{4} = -1/4 Tr(B_{4}), B_{4} = L(B_{3}+c_{3}I)$
+
+
+i, en general, $c_{n} = -1/n Tr(B_{n}), B_{n} = L(B_{n-1}+c_{n-1}I)$
+
+Calculem els coeficients del polinomi característic seguint les expressions anteriors i comprovem que, efectivament, s´obtenen els mateixos valors que resolent el sistema de la pràctica anterior.
+
+```{r}
+#Ordre de la matriu L
+(N = dim(L))
+
+
+#Alternativa en el calcul dels coeficients del polinomi caracteristic
+
+I<-diag(rep(1,4)) #Matriu identitat de dimensio igual que L
+B1 = L
+c1 = -sum(diag(B1))
+
+
+B2 = L%*%(B1 + c1*I)
+c2 = -(1/2)*sum(diag(B2))
+
+
+B3 =  L%*%(B2 + c2*I)
+c3 = -(1/3)*sum(diag(B3))
+
+
+B4 =  L%*%(B3 + c3*I)
+c4 = -(1/4)*sum(diag(B4))
+
+c1;c2;c3;c4
+
+```
+
+
+
+## Tercera part de l´algorisme de Leverrier: Càlcul dels valors propis de L (I).
+
+Leverrier va trobar diverses relacions molt útils per al càlcul dels valors propis de la matriu L. Definim, a partir de les $s_{n}$ de la pràctica anterior,
+
+
+$\displaystyle \sigma = \frac{s_{n}}{s_{n-1}}, n\ge2, \sigma_{1}=0$
+
+
+$\displaystyle \delta = \frac{\sigma_{n}-\sigma_{n-1}}{\sigma_{n-1}-\sigma_{n-2}}, n\ge3$
+
+
+Fent ús d´aquestes dues successions, es defineixen dues noves successions $a_{n}$  i $b_{n}$:
+
+$a_{n} +b_{n}= \sigma_{n} + \delta_{n}\sigma_{n-2}$
+
+
+$a_{n}b_{n} = \sigma_{n-1}\sigma_{n-2}\delta_{n}$
+
+
+amb $|a_{n}|\ge|b_{n}|$ i $n\ge3$.
+
+Es pot demostrar que les successions $a_{n}$ i $b_{n}$ convergeixen cap als dos valors propis de L amb major mòdul. Per tant, si els calculem, tindrem els valors de $\Lambda_{3}$ i $\Lambda_{4}$.
+
+Calculem, per tant, els termes $a_{n}$ i $b_{n}$ amb $3\le n\le22$, i els presentem en una taula. Els últims termes seran els valors propis buscats: $\Lambda_{3}=b_{22}$ i $\Lambda_{4}=a_{22}$.
+
+Per tant, hem de calcular s1, s2, ...,s22:
+
+```{r, echo=FALSE, warning=F, message=FALSE}
+library(expm) 
+
+n=22  #nombre d'iteracions que es calculen
+sn = 0
+for(i in 1:n){
+  Ln = L %^% i 
+  sn[i] = sum(diag(Ln)) #Traça de la matriu Ln
+}
+print(sn)
+
+
+```
+Veiem que coincideix amb el resultats de la pràctica anterior.
+
+Ara calculem sigma:
+
+```{r, echo=FALSE}
+#Calcul de sigma i delta
+
+sigma = c(0, 0) #Inicialitzem a cero el vector
+
+
+for(i in 2:length(sn)){
+  sigma[i] <- sn[i]/sn[i-1]
+}
+print(sigma)
+
+```
+
+i delta:
+
+```{r, echo=FALSE}
+#Inicialitzem el vector d'aquesta forma per a evitar possibles NA en las posicions 1 i 2
+delta = c(0, 0, 0)  
+for(i in 3:length(sigma)){
+  delta[i] = (sigma[i]-sigma[i-1])/(sigma[i-1]-sigma[i-2])
+}
+print(delta)
+```
+A continuacio calculem les successions $a_{n}$ i $b_{n}$:
+
+```{r}
+#Resolem el següent sistema d'equacions:
+#a[i] + b[i]  = sigma[i] + delta[i]*sigma[i-2]
+#a[i]*b[i] = sigma[i-1]*sigma[i-2]*delta[i]
+
+#Definim yn = an + bn, i zn = an*bn
+
+yn = c(0, 0, 0)
+zn = c(0, 0, 0)
+
+for (i in 3:n){
+  yn[i] = sigma[i] + (delta[i]*sigma[i-2])
+}
+
+
+for (i in 3:n){
+  zn[i] = sigma[i-1]*sigma[i-2]*delta[i]
+  }
+
+print(zn)
+print(yn)
+```
+
+```{r, warning=F, message=FALSE}
+library(pracma)
+
+#Els valors de an i bn s'obtenen al resoldre l'equacio:
+#    x^2 - yn[i]x + zn[i]=0 per a cada valor de i. 
+
+for (i in 3:n){
+  lambda = (polyroot(c(zn[i], -yn[i], 1)))
+}
+
+print(round(lambda,1))
+
+```
+```{r}
+#La funcio Re torna valors complexos i ens quedem amb la part real
+
+for (i in 3:n){
+  lambda = Re(polyroot(c(zn[i], -yn[i], 1)))
+}
+```
+```{r, echo=FALSE}
+lambda4=lambda[2]
+lambda3=lambda[1]
+cat("El valor de lambda 4 és", round(lambda[2],1) )
+
+```
+
+```{r, echo=FALSE}
+cat("El valor de lambda 3 és", round(lambda[1],1) )
+
+```
+
+que coincideix amb els resultats de $\Lambda_{4}$ i $\Lambda_{3}$ obtinguts a la pràctica anterior:
+
+```{r}
+lambdaPAC1 <-eigen(L)
+
+lambdaPAC1$values
+```
+
+
+
+## Quarta part de l´algorisme de Leverrier: Càlcul dels valors propis de L (II).
+
+A partir de l´anterior, podem calcular un valor aproximat de les dues arrels de $P(\Lambda)$ restants. Una vegada es tenen dues arrels aproximades del polinomi característic, es poden calcular les altres dues de la manera següent:
+
+$$\displaystyle \frac{P_{\Lambda}}{(\Lambda - a_{22})(\Lambda - b_{22})}=0$$
+$\Lambda_{3}=b_{22}$ i $\Lambda_{4}=a_{22}$.
+
+Si es fa aquesta divisió, i es calculen les arrels del polinomi de grau dos resultant, s´obtenen les dues arrels que falten del polinomi característic.És a dir, ja tindrem els quatre valors propis de la matriu L.
+
+```{r}
+
+#Calcul dels dos valors propis lambda_1 i lambda_2 de la matriu L
+num = c(1, c1, c2, c3, c4)
+den = c(1, -(lambda[1] + lambda[2]), lambda[1]*lambda[2]) #(x-lambda3)*(x-lambda4)
+
+div = deconv(num, den)
+print(div[[1]])
+
+#Calculem les arrels del polinomi obtingut
+lambda = (polyroot(c(rev(div[[1]]))))
+
+print(round(lambda,1))
+```
+
+```{r, echo=FALSE}
+lambda = Re(polyroot(c(rev(div[[1]]))))
+
+lambda2 = lambda[2]
+lambda1 = lambda[1]
+
+cat("El valor de lambda 2 és", round(lambda2,1) )
+
+```
+
+```{r, echo=FALSE}
+cat("El valor de lambda 1 és", round(lambda1,1) )
+
+```
+Veiem que s´obtenen els mateixos resultats que a la pràctica anterior.
